@@ -28,7 +28,7 @@ plt.style.use('seaborn-colorblind')
 #User Input
 sim = 'DR3_lsr012' #input("DR2 or DR3: ")
 dim = '10D' #input("Input how many dimensions are needed: ")
-galaxy = 'Gaia' #input("Use m12i or m12f data: ")
+galaxy = 'm12f_lsr1' #input("Use m12i or m12f data: ")
 transfer = True #bool(input("Transfer learning (True or False): "))
 if transfer == True:
     transfer_galaxy = 'm12i' #i nput("Which galaxy parameters for transfer learning: ")
@@ -54,8 +54,8 @@ elif dim == '6D_gal':
 y_key = 'is_accreted'
 
 # Directories
-# path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/AnankeDR3_data_reduced_m12f_lsr1.hdf5'
-path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/GaiaDR3_data_reduced.hdf5'
+path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/AnankeDR3_data_reduced_m12f_lsr1.hdf5'
+# path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/GaiaDR3_data_reduced.hdf5'
 out_dir = '/ocean/projects/phy210068p/hsu1/Training_results/' + sim + '/' + galaxy + '/' + dim
 roc_title = sim + '_' + galaxy + '_' + dim
 
