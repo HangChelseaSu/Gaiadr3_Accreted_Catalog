@@ -28,7 +28,7 @@ plt.style.use('seaborn-colorblind')
 #User Input
 sim = 'DR3_lsr012' #input("DR2 or DR3: ")
 dim = '6D_cyl' #input("Input how many dimensions are needed: ")
-galaxy = 'm12f_lsr1' #input("Use m12i or m12f data: ")
+galaxy = 'Gaia' #input("Use m12i or m12f data: ")
 transfer = True #bool(input("Transfer learning (True or False): "))
 if transfer == True:
     transfer_galaxy = 'm12i' #i nput("Which galaxy parameters for transfer learning: ")
@@ -54,8 +54,8 @@ elif dim == '6D_gal':
 y_key = 'is_accreted'
 
 # Directories
-path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/AnankeDR3_data_reduced_m12f_lsr1.hdf5'
-# path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/GaiaDR3_data_reduced.hdf5'
+# path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/AnankeDR3_data_reduced_m12f_lsr0.hdf5'
+path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/GaiaDR3_data_reduced.hdf5'
 out_dir = '/ocean/projects/phy210068p/hsu1/Training_results/' + sim + '/' + galaxy + '/' + dim
 roc_title = sim + '_' + galaxy + '_' + dim
 
@@ -221,7 +221,7 @@ class Model(LightningModule):
         loss = F.cross_entropy(preds, train_y, weight = self.weight.to(self.device))
         self.train_acc(preds, train_y)
         self.log('train_loss', loss)
-        self.log('train_acc', self.train_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('train_acc', self.train_acc, on_step=False, on_epoch=True, prog_bar=False)
         return loss
     
     def validation_step(self, batch, batch_nb):
@@ -230,7 +230,7 @@ class Model(LightningModule):
         loss = F.cross_entropy(preds, val_y, weight=self.weight.to(self.device))
         self.valid_acc(preds, val_y)
         self.log('val_loss', loss)
-        self.log('valid_acc', self.valid_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('valid_acc', self.valid_acc, on_step=False, on_epoch=True, prog_bar=False)
         return loss
 
 if transfer == True:
@@ -249,7 +249,7 @@ trainer_logger = CSVLogger(out_dir, name=train_log)
 trainer = Trainer(
     accelerator="auto", devices=1 if torch.cuda.is_available() else None,
     max_epochs=10, default_root_dir=out_dir,
-    callbacks=callbacks, logger=trainer_logger, enable_progress_bar=True )
+    callbacks=callbacks, logger=trainer_logger, enable_progress_bar=False)
 
 # Start training
 trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
@@ -259,14 +259,10 @@ mean = model.mean_train_x
 stdv = model.stdv_train_x
 weight = model.weight
 
-n_test = n_val
-test_x = x[n_train: n_train+n_test]
-test_y = y[n_train: n_train+n_test]
-
-test_x = (test_x - mean) / stdv
+test_x = (x - mean) / stdv
 
 test_x = torch.tensor(test_x, dtype=torch.float32)
-test_y = torch.tensor(test_y, dtype=torch.long)
+test_y = torch.tensor(y, dtype=torch.long)
 
 test_dataset = list(zip(test_x, test_y))
 test_loader = DataLoader(test_dataset, batch_size = batch_size)
