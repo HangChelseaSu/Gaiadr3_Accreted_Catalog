@@ -54,7 +54,7 @@ elif dim == '6D_gal':
 y_key = 'is_accreted'
 
 # Directories
-# path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/AnankeDR3_data_reduced_m12f_lsr0.hdf5'
+# path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/AnankeDR3_data_reduced_m12f_lsr2.hdf5'
 path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/GaiaDR3_data_reduced.hdf5'
 out_dir = '/ocean/projects/phy210068p/hsu1/Training_results/' + sim + '/' + galaxy + '/' + dim
 roc_title = sim + '_' + galaxy + '_' + dim
