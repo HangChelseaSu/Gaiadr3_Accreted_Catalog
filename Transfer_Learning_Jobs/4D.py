@@ -88,7 +88,7 @@ def save_roc(roc_path, epsilon_i, epsilon_a):
     #         f.create_dataset('target', data=target)
     #         f.create_dataset('x_final', data=x_final)
             
-
+# Loading data
 data = []
 f = h5py.File(path, 'r')
 
@@ -124,10 +124,13 @@ f.close()
 # x = x[select]
 # y = y[select]
 
+# Splitting data into training and validation sets
+
 shuffle = np.random.permutation(len(x))
 x = x[shuffle]
 y = y[shuffle]
 
+# %90 training, %10 validation
 n_train = int(0.9 *len(x))
 n_val = len(x)-n_train
 train_x, val_x = x[:n_train], x[n_train: n_train+n_val]
@@ -136,11 +139,13 @@ train_y, val_y = y[:n_train], y[n_train: n_train+n_val]
 ny1 = np.sum(train_y==1)
 ny0 = np.sum(train_y==0)
 ny = ny1 + ny0
+# Weights for cross entropy loss
 w1 = ny/ny1
 w0 = ny/ny0
 weight = torch.tensor([w0, w1], dtype=torch.float32)
 mean_train_x = np.mean(train_x, axis = 0)
 stdv_train_x = np.std(train_x, axis = 0)
+# Normalizing data
 train_x = (train_x - mean_train_x) / stdv_train_x
 val_x = (val_x - mean_train_x) / stdv_train_x
 train_x = torch.tensor(train_x, dtype=torch.float32)
@@ -148,15 +153,19 @@ train_y = torch.tensor(train_y, dtype=torch.long)
 val_x = torch.tensor(val_x, dtype=torch.float32)
 val_y = torch.tensor(val_y, dtype=torch.long)
 
+# Creating dataloaders
 train_dataset = TensorDataset(train_x, train_y)
 val_dataset = TensorDataset(val_x, val_y)
 train_loader = DataLoader(train_dataset, batch_size = batch_size)
 val_loader = DataLoader(val_dataset, batch_size = batch_size)
+
+# Saving training parameters
 with h5py.File(train_parameter_file, 'w') as f:
     f.create_dataset('shuffle', data=shuffle)
     f.attrs['n_train']=n_train
     f.attrs['n_val']=n_val
 
+# Creating model
 class Model(LightningModule):
                 
     def __init__(self, weight, mean_train_x, stdv_train_x, transfer):
@@ -171,6 +180,7 @@ class Model(LightningModule):
         self.weight = weight
         self.mean_train_x = mean_train_x
         self.stdv_train_x = stdv_train_x
+        # In case of transfer learning, freeze the feature extractor
         if transfer == True:
             self.feature_extractor = Model.load_from_checkpoint(transfer_checkpoint, transfer=False)
             self.feature_extractor.freeze()
@@ -204,6 +214,7 @@ class Model(LightningModule):
         self.log('valid_acc', self.valid_acc, on_step=False, on_epoch=True, prog_bar=False)
         return loss
 
+#  Load different models in LightningModule based on transfer learning
 if transfer == True:
     model = Model(weight, mean_train_x, stdv_train_x, transfer=True)
 else:
@@ -225,10 +236,13 @@ trainer = Trainer(
 # Start training
 trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
+# Load best model
 model = Model.load_from_checkpoint(checkpoint)
 mean = model.mean_train_x
 stdv = model.stdv_train_x
 weight = model.weight
+
+# Load test data
 
 test_x = (x - mean) / stdv
 
@@ -238,6 +252,7 @@ test_y = torch.tensor(y, dtype=torch.long)
 test_dataset = list(zip(test_x, test_y))
 test_loader = DataLoader(test_dataset, batch_size = batch_size)
 
+# Get predictions
 predict = []
 target = []
 x_final = []
@@ -254,9 +269,13 @@ predict = np.concatenate(predict)
 target = np.concatenate(target)
 x_final = np.concatenate(x_final)
 
+# Calculate scores based on predictions
+
 score = np.exp(predict[:,1])/(np.exp(predict[:,0])+np.exp(predict[:,1]))
 target_true_mask = (target==True)
 target_false_mask = (target==False)
+
+# Calculate ROC curve for 1000 thresholds
 
 thresholds = np.linspace(0.001, 1, 1000)
 precision = []
@@ -280,4 +299,5 @@ for thres in thresholds:
     epsilon_a.append(epsilon_a_thres)
     epsilon_i.append(epsilon_i_thres)
 
+# Plot and save ROC curve data
 save_roc(roc_path, epsilon_i, epsilon_a)
