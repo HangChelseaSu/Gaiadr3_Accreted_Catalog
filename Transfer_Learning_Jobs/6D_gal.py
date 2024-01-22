@@ -55,7 +55,7 @@ y_key = 'is_accreted'
 
 # Directories
 # path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/AnankeDR3_data_reduced_m12f_lsr0.hdf5'
-path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/GaiaDR3_data_reduced.hdf5'
+path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/GaiaDR3_data_reduced_feh.hdf5'
 out_dir = '/ocean/projects/phy210068p/hsu1/Training_results/' + sim + '/' + galaxy + '/' + dim
 roc_title = sim + '_' + galaxy + '_' + dim
 
@@ -73,7 +73,7 @@ train_log = out_dir + '/training_logs'
 checkpoint = train_log + '/version_0/checkpoints/last.ckpt'
     
 #Saving roc curves
-def save_roc(roc_path, training_score_path, epsilon_i, epsilon_a):
+def save_roc(roc_path, epsilon_i, epsilon_a):
     with h5py.File(roc_path, 'a') as f:
         if dim + '_ep_i' in f.keys():
             del f[dim + '_ep_i']
@@ -83,10 +83,10 @@ def save_roc(roc_path, training_score_path, epsilon_i, epsilon_a):
         else:
             f.create_dataset(dim + '_ep_i', data=epsilon_i)
             f.create_dataset(dim + '_ep_a', data=epsilon_a)
-    with h5py.File(training_score_path, 'w') as f:
-            f.create_dataset('score', data=score)
-            f.create_dataset('target', data=target)
-            f.create_dataset('x_final', data=x_final)
+    # with h5py.File(training_score_path, 'w') as f:
+    #         f.create_dataset('score', data=score)
+    #         f.create_dataset('target', data=target)
+    #         f.create_dataset('x_final', data=x_final)
             
 
 data = []
@@ -115,34 +115,34 @@ elif 'radial_velocity' in x_keys:
 else:
     x = data
 
-ra = x[0] * u.deg
-dec = x[1] * u.deg
-pmra = x[2] * u.mas / u.yr
-pmdec = x[3] * u.mas / u.yr
-parallax = x[4] * u.mas
-rv = x[5] * u.km / u.s
+# ra = x[0] * u.deg
+# dec = x[1] * u.deg
+# pmra = x[2] * u.mas / u.yr
+# pmdec = x[3] * u.mas / u.yr
+# parallax = x[4] * u.mas
+# rv = x[5] * u.km / u.s
 
-dist = coord.Distance(parallax=parallax, allow_negative=True)
+# dist = coord.Distance(parallax=parallax, allow_negative=True)
 
-# Coord transformation
-icrs = coord.ICRS(
-    ra=ra, dec=dec, distance=dist, pm_ra_cosdec=pmra, pm_dec=pmdec, radial_velocity=rv)
-gal = icrs.transform_to(coord.Galactocentric())
+# # Coord transformation
+# icrs = coord.ICRS(
+#     ra=ra, dec=dec, distance=dist, pm_ra_cosdec=pmra, pm_dec=pmdec, radial_velocity=rv)
+# gal = icrs.transform_to(coord.Galactocentric())
 
-x_gal = gal.x.to_value(u.kpc)
-y_gal = gal.y.to_value(u.kpc)
-z_gal = gal.z.to_value(u.kpc)
-vx_gal = gal.v_x.to_value(u.km/u.s)
-vy_gal = gal.v_y.to_value(u.km/u.s)
-vz_gal = gal.v_z.to_value(u.km/u.s)  
+# x_gal = gal.x.to_value(u.kpc)
+# y_gal = gal.y.to_value(u.kpc)
+# z_gal = gal.z.to_value(u.kpc)
+# vx_gal = gal.v_x.to_value(u.km/u.s)
+# vy_gal = gal.v_y.to_value(u.km/u.s)
+# vz_gal = gal.v_z.to_value(u.km/u.s)  
 
-x = []
-x.append(x_gal)
-x.append(y_gal)
-x.append(z_gal)
-x.append(vx_gal)
-x.append(vy_gal)
-x.append(vz_gal)
+# x = []
+# x.append(x_gal)
+# x.append(y_gal)
+# x.append(z_gal)
+# x.append(vx_gal)
+# x.append(vy_gal)
+# x.append(vz_gal)
 
 x = np.vstack(x).T
 f.close()
@@ -310,4 +310,4 @@ for thres in thresholds:
     epsilon_a.append(epsilon_a_thres)
     epsilon_i.append(epsilon_i_thres)
 
-save_roc(roc_path, training_score_path, epsilon_i, epsilon_a)
+save_roc(roc_path, epsilon_i, epsilon_a)

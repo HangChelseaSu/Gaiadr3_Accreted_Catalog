@@ -28,7 +28,7 @@ plt.style.use('seaborn-colorblind')
 #User Input
 sim = 'DR3_lsr012' #input("DR2 or DR3: ")
 dim = '10D' #input("Input how many dimensions are needed: ")
-galaxy = 'Gaia ' #input("Use m12i or m12f data: ")
+galaxy = 'Gaia' #input("Use m12i or m12f data: ")
 transfer = True #bool(input("Transfer learning (True or False): "))
 if transfer == True:
     transfer_galaxy = 'm12i' #i nput("Which galaxy parameters for transfer learning: ")
@@ -55,7 +55,7 @@ y_key = 'is_accreted'
 
 # Directories
 # path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/AnankeDR3_data_reduced_m12i_lsr012.hdf5'
-path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/GaiaDR3_data_reduced.hdf5'
+path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/GaiaDR3_data_reduced_feh.hdf5'
 out_dir = '/ocean/projects/phy210068p/hsu1/Training_results/' + sim + '/' + galaxy + '/' + dim
 roc_title = sim + '_' + galaxy + '_' + dim
 
@@ -73,7 +73,7 @@ train_log = out_dir + '/training_logs'
 checkpoint = train_log + '/version_0/checkpoints/last.ckpt'
     
 #Saving roc curves
-def save_roc(roc_path, training_score_path, epsilon_i, epsilon_a):
+def save_roc(roc_path, epsilon_i, epsilon_a):
     with h5py.File(roc_path, 'a') as f:
         if dim + '_ep_i' in f.keys():
             del f[dim + '_ep_i']
@@ -83,10 +83,10 @@ def save_roc(roc_path, training_score_path, epsilon_i, epsilon_a):
         else:
             f.create_dataset(dim + '_ep_i', data=epsilon_i)
             f.create_dataset(dim + '_ep_a', data=epsilon_a)
-    with h5py.File(training_score_path, 'w') as f:
-            f.create_dataset('score', data=score)
-            f.create_dataset('target', data=target)
-            f.create_dataset('x_final', data=x_final)
+    # with h5py.File(training_score_path, 'w') as f:
+    #         f.create_dataset('score', data=score)
+    #         f.create_dataset('target', data=target)
+    #         f.create_dataset('x_final', data=x_final)
             
 
 data = []
@@ -280,4 +280,4 @@ for thres in thresholds:
     epsilon_a.append(epsilon_a_thres)
     epsilon_i.append(epsilon_i_thres)
 
-save_roc(roc_path, training_score_path, epsilon_i, epsilon_a)
+save_roc(roc_path, epsilon_i, epsilon_a)
