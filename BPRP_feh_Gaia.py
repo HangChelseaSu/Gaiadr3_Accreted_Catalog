@@ -6,6 +6,8 @@ import matplotlib as mpl
 import astropy.units as u
 import astropy.coordinates as coord
 
+# Read in the BPRP catalog for feh column
+
 path0 = '/ocean/projects/phy210068p/hsu1/BPRP_spec/stellar_params_catalog_00.h5'
 path1 = '/ocean/projects/phy210068p/hsu1/BPRP_spec/stellar_params_catalog_01.h5'
 path2 = '/ocean/projects/phy210068p/hsu1/BPRP_spec/stellar_params_catalog_02.h5'
@@ -20,11 +22,15 @@ path9 = '/ocean/projects/phy210068p/hsu1/BPRP_spec/stellar_params_catalog_09.h5'
 files = [path0, path1, path2, path3, path4, path5, path6, path7, path8, path9]
 feh = []
 BPRP_id = []
+
+# Load in source_id and feh from BPRP catalog
 for i in range(len(files)):
     with h5py.File(files[i], 'r') as f:
         feh = np.append(feh, f['stellar_params_est'][:,1])
         b_id = np.array(f['gdr3_source_id'][:], dtype=np.int64)
         BPRP_id = np.append(BPRP_id, b_id)
+
+# Load in GaiaDR3 data with poe>10 cut only
 
 path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/GaiaDR3_data_reduced.hdf5'
 with h5py.File(path, 'r') as f:
@@ -35,6 +41,8 @@ with h5py.File(path, 'r') as f:
     pmdec = f['pmdec'][:]
     rv = f['radial_velocity'][:]
     main_source_id = f['source_id'][:]
+
+    # Create pandas dataframe for GaiaDR3 data and BPRP data
 
     gaia_df = pd.DataFrame(
     {
@@ -58,7 +66,11 @@ BPRP_df = pd.DataFrame(
 #     index=BPRP_id,
 )
 
+# Merge the two dataframes based on source_id
+
 merged_df = gaia_df.merge(BPRP_df, left_on='main_source_id', right_on='BPRP_id')
+
+# Save the merged dataframe as hdf5 file
 
 ra = merged_df.ra
 dec = merged_df.dec
