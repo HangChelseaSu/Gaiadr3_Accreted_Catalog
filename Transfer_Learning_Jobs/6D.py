@@ -47,9 +47,9 @@ elif dim == '9D':
 elif dim == '10D':
     x_keys = ['ra', 'dec', 'pmra', 'pmdec', 'parallax', 'radial_velocity', 'Jr', 'Jphi', 'Jz', 'feh']
 elif dim == '6D_cyl':
-    x_keys = ['ra', 'dec', 'pmra', 'pmdec', 'parallax', 'radial_velocity']
+    x_keys = ['x_gal', 'y_gal', 'z_gal', 'vx_gal', 'vy_gal', 'vz_gal']
 elif dim == '6D_gal':
-    x_keys = ['ra', 'dec', 'pmra', 'pmdec', 'parallax', 'radial_velocity']
+    x_keys = ['rho_cyl', 'phi_cyl', 'z_cyl', 'vrho_cyl', 'vphi_cyl', 'vz_cyl']
     
 y_key = 'is_accreted'
 
@@ -230,10 +230,10 @@ mean = model.mean_train_x
 stdv = model.stdv_train_x
 weight = model.weight
 
-test_x = (x - mean) / stdv
+test_x = (val_x - mean) / stdv
 
 test_x = torch.tensor(test_x, dtype=torch.float32)
-test_y = torch.tensor(y, dtype=torch.long)
+test_y = torch.tensor(val_y, dtype=torch.long)
 
 test_dataset = list(zip(test_x, test_y))
 test_loader = DataLoader(test_dataset, batch_size = batch_size)

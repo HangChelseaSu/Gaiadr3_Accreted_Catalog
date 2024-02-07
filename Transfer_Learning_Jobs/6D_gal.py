@@ -47,9 +47,9 @@ elif dim == '9D':
 elif dim == '10D':
     x_keys = ['ra', 'dec', 'pmra', 'pmdec', 'parallax', 'radial_velocity', 'Jr', 'Jphi', 'Jz', 'feh']
 elif dim == '6D_cyl':
-    x_keys = ['ra', 'dec', 'pmra', 'pmdec', 'parallax', 'radial_velocity']
+    x_keys = ['x_gal', 'y_gal', 'z_gal', 'vx_gal', 'vy_gal', 'vz_gal']
 elif dim == '6D_gal':
-    x_keys = ['ra', 'dec', 'pmra', 'pmdec', 'parallax', 'radial_velocity']
+    x_keys = ['rho_cyl', 'phi_cyl', 'z_cyl', 'vrho_cyl', 'vphi_cyl', 'vz_cyl']
     
 y_key = 'is_accreted'
 
@@ -254,60 +254,3 @@ trainer = Trainer(
 
 # Start training
 trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
-
-model = Model.load_from_checkpoint(checkpoint)
-mean = model.mean_train_x
-stdv = model.stdv_train_x
-weight = model.weight
-
-test_x = (x - mean) / stdv
-
-test_x = torch.tensor(test_x, dtype=torch.float32)
-test_y = torch.tensor(y, dtype=torch.long)
-
-test_dataset = list(zip(test_x, test_y))
-test_loader = DataLoader(test_dataset, batch_size = batch_size)
-
-predict = []
-target = []
-x_final = []
-
-model.eval()
-with torch.no_grad():
-    for batch in test_loader:
-        x, y = batch
-        yhat = model(x)
-        predict.append(yhat.cpu().numpy())
-        target.append(y.cpu().numpy())
-        x_final.append(x.cpu().numpy())
-predict = np.concatenate(predict)
-target = np.concatenate(target)
-x_final = np.concatenate(x_final)
-
-score = np.exp(predict[:,1])/(np.exp(predict[:,0])+np.exp(predict[:,1]))
-target_true_mask = (target==True)
-target_false_mask = (target==False)
-
-thresholds = np.linspace(0.001, 1, 1000)
-precision = []
-recall = []
-epsilon_a = []
-epsilon_i = []
-for thres in thresholds:
-    score_1 = score>thres
-    score_1_true_mask = (score_1==True)
-    score_1_false_mask = (score_1==False)
-    TP = np.sum(score_1[target_true_mask])
-    FP = np.sum(score_1[target_false_mask])
-    TN = np.sum(~score_1[target_false_mask])
-    FN = np.sum(~score_1[target_true_mask])
-    N_a = TP + FN
-    N_i = TN + FP
-    N_a_s = TP
-    N_i_s = FP
-    epsilon_a_thres = N_a_s / N_a
-    epsilon_i_thres = N_i_s / N_i
-    epsilon_a.append(epsilon_a_thres)
-    epsilon_i.append(epsilon_i_thres)
-
-save_roc(roc_path, epsilon_i, epsilon_a)

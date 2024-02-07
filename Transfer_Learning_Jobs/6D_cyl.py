@@ -47,14 +47,14 @@ elif dim == '9D':
 elif dim == '10D':
     x_keys = ['ra', 'dec', 'pmra', 'pmdec', 'parallax', 'radial_velocity', 'Jr', 'Jphi', 'Jz', 'feh']
 elif dim == '6D_cyl':
-    x_keys = ['rho_cyl', 'phi_cyl', 'z_cyl', 'vrho_cyl', 'vphi_cyl', 'vz_cyl']
-elif dim == '6D_gal':
     x_keys = ['x_gal', 'y_gal', 'z_gal', 'vx_gal', 'vy_gal', 'vz_gal']
+elif dim == '6D_gal':
+    x_keys = ['rho_cyl', 'phi_cyl', 'z_cyl', 'vrho_cyl', 'vphi_cyl', 'vz_cyl']
     
 y_key = 'is_accreted'
 
 # Directories
-# path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/AnankeDR3_data_reduced_m12f_lsr2.hdf5'
+# path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/AnankeDR3_data_reduced_m12i_lsr012.hdf5'
 path = '/ocean/projects/phy210068p/hsu1/Ananke_datasets_training/GaiaDR3_data_reduced_feh.hdf5'
 out_dir = '/ocean/projects/phy210068p/hsu1/Training_results/' + sim + '/' + galaxy + '/' + dim
 roc_title = sim + '_' + galaxy + '_' + dim
@@ -88,7 +88,7 @@ def save_roc(roc_path, epsilon_i, epsilon_a):
     #         f.create_dataset('target', data=target)
     #         f.create_dataset('x_final', data=x_final)
             
-
+# Loading data
 data = []
 f = h5py.File(path, 'r')
 
@@ -115,35 +115,6 @@ elif 'radial_velocity' in x_keys:
 else:
     x = data
 
-# ra = x[0] * u.deg
-# dec = x[1] * u.deg
-# pmra = x[2] * u.mas / u.yr
-# pmdec = x[3] * u.mas / u.yr
-# parallax = x[4] * u.mas
-# rv = x[5] * u.km / u.s
-
-# dist = coord.Distance(parallax=parallax, allow_negative=True)
-
-# # Coord transformation
-# icrs = coord.ICRS(
-#     ra=ra, dec=dec, distance=dist, pm_ra_cosdec=pmra, pm_dec=pmdec, radial_velocity=rv)
-# icrs.representation_type = 'cylindrical'
-
-# rho_cyl = icrs.rho.to_value(u.pc)
-# phi_cyl = icrs.phi.to_value(u.deg)
-# z_cyl = icrs.z.to_value(u.pc)
-# vrho_cyl = icrs.d_rho.to_value(u.mas * u.pc / (u.rad * u.yr))
-# vphi_cyl = icrs.d_phi.to_value(u.mas / u.yr)
-# vz_cyl = icrs.d_z.to_value(u.mas * u.pc / (u.rad * u.yr))
-
-# x = []
-# x.append(rho_cyl)
-# x.append(phi_cyl)
-# x.append(z_cyl)
-# x.append(vrho_cyl)
-# x.append(vphi_cyl)
-# x.append(vz_cyl)
-
 x = np.vstack(x).T
 f.close()
 
@@ -153,10 +124,13 @@ f.close()
 # x = x[select]
 # y = y[select]
 
+# Splitting data into training and validation sets
+
 shuffle = np.random.permutation(len(x))
 x = x[shuffle]
 y = y[shuffle]
 
+# %90 training, %10 validation
 n_train = int(0.9 *len(x))
 n_val = len(x)-n_train
 train_x, val_x = x[:n_train], x[n_train: n_train+n_val]
@@ -165,11 +139,13 @@ train_y, val_y = y[:n_train], y[n_train: n_train+n_val]
 ny1 = np.sum(train_y==1)
 ny0 = np.sum(train_y==0)
 ny = ny1 + ny0
+# Weights for cross entropy loss
 w1 = ny/ny1
 w0 = ny/ny0
 weight = torch.tensor([w0, w1], dtype=torch.float32)
 mean_train_x = np.mean(train_x, axis = 0)
 stdv_train_x = np.std(train_x, axis = 0)
+# Normalizing data
 train_x = (train_x - mean_train_x) / stdv_train_x
 val_x = (val_x - mean_train_x) / stdv_train_x
 train_x = torch.tensor(train_x, dtype=torch.float32)
@@ -177,15 +153,19 @@ train_y = torch.tensor(train_y, dtype=torch.long)
 val_x = torch.tensor(val_x, dtype=torch.float32)
 val_y = torch.tensor(val_y, dtype=torch.long)
 
+# Creating dataloaders
 train_dataset = TensorDataset(train_x, train_y)
 val_dataset = TensorDataset(val_x, val_y)
 train_loader = DataLoader(train_dataset, batch_size = batch_size)
 val_loader = DataLoader(val_dataset, batch_size = batch_size)
+
+# Saving training parameters
 with h5py.File(train_parameter_file, 'w') as f:
     f.create_dataset('shuffle', data=shuffle)
     f.attrs['n_train']=n_train
     f.attrs['n_val']=n_val
 
+# Creating model
 class Model(LightningModule):
                 
     def __init__(self, weight, mean_train_x, stdv_train_x, transfer):
@@ -200,6 +180,7 @@ class Model(LightningModule):
         self.weight = weight
         self.mean_train_x = mean_train_x
         self.stdv_train_x = stdv_train_x
+        # In case of transfer learning, freeze the feature extractor
         if transfer == True:
             self.feature_extractor = Model.load_from_checkpoint(transfer_checkpoint, transfer=False)
             self.feature_extractor.freeze()
@@ -233,6 +214,7 @@ class Model(LightningModule):
         self.log('valid_acc', self.valid_acc, on_step=False, on_epoch=True, prog_bar=False)
         return loss
 
+#  Load different models in LightningModule based on transfer learning
 if transfer == True:
     model = Model(weight, mean_train_x, stdv_train_x, transfer=True)
 else:
@@ -249,64 +231,7 @@ trainer_logger = CSVLogger(out_dir, name=train_log)
 trainer = Trainer(
     accelerator="auto", devices=1 if torch.cuda.is_available() else None,
     max_epochs=10, default_root_dir=out_dir,
-    callbacks=callbacks, logger=trainer_logger, enable_progress_bar=False)
+    callbacks=callbacks, logger=trainer_logger, enable_progress_bar=False )
 
 # Start training
 trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
-
-model = Model.load_from_checkpoint(checkpoint)
-mean = model.mean_train_x
-stdv = model.stdv_train_x
-weight = model.weight
-
-test_x = (x - mean) / stdv
-
-test_x = torch.tensor(test_x, dtype=torch.float32)
-test_y = torch.tensor(y, dtype=torch.long)
-
-test_dataset = list(zip(test_x, test_y))
-test_loader = DataLoader(test_dataset, batch_size = batch_size)
-
-predict = []
-target = []
-x_final = []
-
-model.eval()
-with torch.no_grad():
-    for batch in test_loader:
-        x, y = batch
-        yhat = model(x)
-        predict.append(yhat.cpu().numpy())
-        target.append(y.cpu().numpy())
-        x_final.append(x.cpu().numpy())
-predict = np.concatenate(predict)
-target = np.concatenate(target)
-x_final = np.concatenate(x_final)
-
-score = np.exp(predict[:,1])/(np.exp(predict[:,0])+np.exp(predict[:,1]))
-target_true_mask = (target==True)
-target_false_mask = (target==False)
-
-thresholds = np.linspace(0.001, 1, 1000)
-precision = []
-recall = []
-epsilon_a = []
-epsilon_i = []
-for thres in thresholds:
-    score_1 = score>thres
-    score_1_true_mask = (score_1==True)
-    score_1_false_mask = (score_1==False)
-    TP = np.sum(score_1[target_true_mask])
-    FP = np.sum(score_1[target_false_mask])
-    TN = np.sum(~score_1[target_false_mask])
-    FN = np.sum(~score_1[target_true_mask])
-    N_a = TP + FN
-    N_i = TN + FP
-    N_a_s = TP
-    N_i_s = FP
-    epsilon_a_thres = N_a_s / N_a
-    epsilon_i_thres = N_i_s / N_i
-    epsilon_a.append(epsilon_a_thres)
-    epsilon_i.append(epsilon_i_thres)
-
-save_roc(roc_path, epsilon_i, epsilon_a)
